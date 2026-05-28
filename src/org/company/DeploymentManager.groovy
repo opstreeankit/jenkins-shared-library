@@ -2,108 +2,60 @@ package org.company
 
 class DeploymentManager implements Serializable {
 
-```
-def steps
-String environment
+    def steps
+    String environment
 
-DeploymentManager(steps, String environment) {
-    this.steps = steps
-    this.environment = environment
-}
-
-// Validation Method
-def validate() {
-
-    steps.echo "Validating deployment for environment: ${environment}"
-
-    if (!(environment in ['dev', 'staging', 'prod'])) {
-        steps.error("Invalid environment: ${environment}")
+    DeploymentManager(steps, String environment) {
+        this.steps = steps
+        this.environment = environment
     }
 
-    steps.echo "Validation successful"
-}
+    // Validation Method
+    def validate() {
+        steps.echo "Validating deployment for ${environment}"
 
-// Deployment Method
-def deploy() {
+        if (!(environment in ['dev', 'staging', 'prod'])) {
+            steps.error("Invalid environment: ${environment}")
+        }
 
-    steps.echo "Starting deployment for ${environment}"
+        steps.echo "Validation successful"
+    }
 
-    // Environment-specific port mapping
-    def portMap = [
-        dev     : "8081",
-        staging : "8082",
-        prod    : "8083"
-    ]
+    // Deployment Method
+    def deploy() {
 
-    def appPort = portMap[environment]
+        steps.echo "Deploying attendance microservice to ${environment}"
 
-    steps.sh """
+        steps.sh """
+            docker build -t attendance:${environment} attendance/
 
-        echo "Current Workspace:"
-        pwd
+            docker stop attendance-${environment} || true
+            docker rm attendance-${environment} || true
 
-        echo "Attendance Directory:"
-        ls -la attendance
+            docker run -d \
+              --name attendance-${environment} \
+              -p 8080:8080 \
+              attendance:${environment}
+        """
 
-        echo "Building Docker Image..."
-        docker build -t attendance:${environment} ./attendance
+        steps.echo "Deployment completed for ${environment}"
+    }
 
-        echo "Docker Images:"
-        docker images | grep attendance || true
+    // Rollback Method
+    def rollback() {
 
-        echo "Stopping Existing Container..."
-        docker stop attendance-${environment} || true
+        steps.echo "Rollback started for ${environment}"
 
-        echo "Removing Existing Container..."
-        docker rm attendance-${environment} || true
+        steps.sh """
+            docker stop attendance-${environment} || true
+            docker rm attendance-${environment} || true
 
-        echo "Running New Container..."
+            docker run -d \
+              --name attendance-${environment} \
+              -p 8080:8080 \
+              attendance:previous
+        """
 
-        docker run -d \\
-          --name attendance-${environment} \\
-          -p ${appPort}:8081 \\
-          attendance:${environment}
-
-        echo "Running Containers:"
-        docker ps
-    """
-
-    steps.echo "Deployment completed successfully for ${environment}"
-}
-
-// Rollback Method
-def rollback() {
-
-    steps.echo "Starting rollback for ${environment}"
-
-    def portMap = [
-        dev     : "8081",
-        staging : "8082",
-        prod    : "8083"
-    ]
-
-    def appPort = portMap[environment]
-
-    steps.sh """
-
-        echo "Stopping Current Container..."
-        docker stop attendance-${environment} || true
-
-        echo "Removing Current Container..."
-        docker rm attendance-${environment} || true
-
-        echo "Starting Previous Stable Container..."
-
-        docker run -d \\
-          --name attendance-${environment} \\
-          -p ${appPort}:8081 \\
-          attendance:previous
-
-        docker ps
-    """
-
-    steps.echo "Rollback completed successfully"
-}
-```
-
+        steps.echo "Rollback completed"
+    }
 }
