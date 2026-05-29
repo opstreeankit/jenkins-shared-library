@@ -102,7 +102,7 @@ def rollingDeploy() {
 
         echo "Performing health check..."
 
-        curl -f http://localhost:9090 || exit 1
+        curl -f http://localhost:9090/attendance || exit 1
 
         echo "Health check successful"
 
@@ -112,7 +112,7 @@ def rollingDeploy() {
 
         docker rm attendance-${environment} || true
 
-        echo "Deploying new version..."
+        echo "Starting new production container..."
 
         docker run -d \\
           --name attendance-${environment} \\
