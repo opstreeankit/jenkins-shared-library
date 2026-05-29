@@ -68,7 +68,7 @@ def rollingDeploy() {
         sleep 15
 
         echo "Performing health check..."
-        curl -f http://localhost:9090/health
+        curl -f http://localhost:9090/healthz
 
         echo "Stopping old container..."
         docker stop attendance-${environment} || true
